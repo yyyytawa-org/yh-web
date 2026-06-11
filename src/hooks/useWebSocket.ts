@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useAuthStore } from '../store/authStore'
+import { WS_URL } from '../config'
 import { useChatStore } from '../store/chatStore'
 import { parseMessage } from '../types/message'
 import protobuf from 'protobufjs'
@@ -84,7 +85,7 @@ export function useWebSocket() {
     if (heartbeatRef.current) clearInterval(heartbeatRef.current)
     if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current)
 
-    const ws = new WebSocket('wss://chat-ws-go.jwzhd.com/ws')
+    const ws = new WebSocket(WS_URL)
     ws.binaryType = 'arraybuffer'
     wsRef.current = ws
 
@@ -126,7 +127,7 @@ export function useWebSocket() {
       if (wsRef.current) { wsRef.current.onclose = null; wsRef.current.close() }
       if (heartbeatRef.current) clearInterval(heartbeatRef.current)
 
-      const newWs = new WebSocket('wss://chat-ws-go.jwzhd.com/ws')
+      const newWs = new WebSocket(WS_URL)
       newWs.binaryType = 'arraybuffer'
       wsRef.current = newWs
 

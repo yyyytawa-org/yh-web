@@ -1,16 +1,5 @@
 import { create } from 'zustand'
-
-/** 云湖数据床域名列表 */
-const CDN_DOMAINS = [
-  'chat-audio1.jwznb.com',
-  'chat-file.jwznb.com',
-  'chat-storage1.jwznb.com',
-  'chat-file-oss.jwznb.com',
-  'chat-img.jwznb.com',
-  'chat-img2.jwznb.com',
-  'chat-img3.jwznb.com',
-  'chat-video1.jwznb.com',
-]
+import { CDN_DOMAINS, CDN_PREFIXES } from '../config'
 
 interface SettingsState {
   /** 域名 → 反代 URL 映射 */
@@ -60,7 +49,7 @@ export function resolveMediaUrl(originalUrl: string): string {
 
   // 相对路径：拼接默认图片 CDN
   if (!originalUrl.startsWith('http')) {
-    return `https://chat-img.jwznb.com/${originalUrl}`
+    return `${CDN_PREFIXES.image}/${originalUrl}`
   }
 
   // 提取域名

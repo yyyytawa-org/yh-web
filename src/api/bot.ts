@@ -1,4 +1,5 @@
 import protobuf from 'protobufjs'
+import { API_BASE } from '../config'
 
 const protoStr = `
 syntax = "proto3";
@@ -41,19 +42,20 @@ const root = protobuf.parse(protoStr).root
 const BotInfoReq = root.lookupType('bot_info_send')
 const BotInfoResp = root.lookupType('bot_info')
 
-async function protoPost(path: string, body: Uint8Array) {
+async function protoPost(path: string, body: Uint8Array, signal?: AbortSignal) {
   const token = localStorage.getItem('yh_token') || ''
-  const resp = await fetch(`https://chat-go.jwzhd.com${path}`, {
+  const resp = await fetch(`${API_BASE}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-protobuf', 'token': token },
     body: body as BodyInit | null,
+    signal,
   })
   const buf = await resp.arrayBuffer()
   return new Uint8Array(buf)
 }
 
-export async function getBotInfo(botId: string) {
+export async function getBotInfo(botId: string, signal?: AbortSignal) {
   const encoded = BotInfoReq.encode({ id: botId }).finish()
-  const buf = await protoPost('/v1/bot/bot-info', encoded)
+  const buf = await protoPost('/v1/bot/bot-info', encoded, signal)
   return BotInfoResp.toObject(BotInfoResp.decode(buf), { defaults: true })
 }

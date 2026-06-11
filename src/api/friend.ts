@@ -1,4 +1,5 @@
 import protobuf from 'protobufjs'
+import { API_BASE } from '../config'
 
 const protoStr = `
 syntax = "proto3";
@@ -70,29 +71,31 @@ const Req = root.lookupType('address_book_list_send')
 const Resp = root.lookupType('address_book_list')
 const RequestListResp = root.lookupType('request_list')
 
-async function protoGet(path: string) {
+async function protoGet(path: string, signal?: AbortSignal) {
   const token = localStorage.getItem('yh_token') || ''
-  const resp = await fetch(`https://chat-go.jwzhd.com${path}`, {
+  const resp = await fetch(`${API_BASE}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-protobuf', 'token': token },
+    signal,
   })
   const buf = await resp.arrayBuffer()
   return new Uint8Array(buf)
 }
 
-export async function getAddressBook(md5: string = '') {
+export async function getAddressBook(md5: string = '', signal?: AbortSignal) {
   const token = localStorage.getItem('yh_token') || ''
   const body = md5 ? Req.encode({ md5 }).finish() : null
-  const resp = await fetch('https://chat-go.jwzhd.com/v1/friend/address-book-list', {
+  const resp = await fetch(`${API_BASE}/v1/friend/address-book-list`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-protobuf', 'token': token },
     body: body as BodyInit | null,
+    signal,
   })
   const buf = await resp.arrayBuffer()
   return Resp.toObject(Resp.decode(new Uint8Array(buf)), { defaults: true })
 }
 
-export async function getRequestList() {
-  const buf = await protoGet('/v1/friend/request-list')
+export async function getRequestList(signal?: AbortSignal) {
+  const buf = await protoGet('/v1/friend/request-list', signal)
   return RequestListResp.toObject(RequestListResp.decode(buf), { defaults: true })
 }

@@ -8,8 +8,7 @@ const TOKEN_API_MAP: Record<'image' | 'file' | 'video', string> = {
   video: '/v1/misc/qiniu-token-video',
 }
 
-/** 默认上传 host，当 query 失败时使用 */
-const DEFAULT_UPLOAD_HOST = 'upload-z2.qiniup.com'
+import { UPLOAD_CONFIG, CDN_PREFIXES } from '../config'
 
 interface CachedToken {
   token: string
@@ -86,16 +85,16 @@ async function getUploadHost(bucket: string, accessKey: string): Promise<string>
   const cached = hostCache[bucket]
   if (cached && cached.expireAt > now) return cached.host
 
-  let host = DEFAULT_UPLOAD_HOST
+  let host = UPLOAD_CONFIG.defaultHost
   try {
     const resp = await fetch(
-      `https://api.qiniu.com/v4/query?ak=${encodeURIComponent(accessKey)}&bucket=${encodeURIComponent(bucket)}`,
+      `${UPLOAD_CONFIG.queryApi}?ak=${encodeURIComponent(accessKey)}&bucket=${encodeURIComponent(bucket)}`,
     )
     if (resp.ok) {
       const json = await resp.json()
       const domain = json?.hosts?.[0]?.up?.domains?.[0]
       if (domain) {
-        host = String(domain).replace(/^https?:\/\//i, '').split('/')[0] || DEFAULT_UPLOAD_HOST
+        host = String(domain).replace(/^https?:\/\//i, '').split('/')[0] || UPLOAD_CONFIG.defaultHost
       }
     }
   } catch { /* 使用默认 host */ }
@@ -150,24 +149,18 @@ interface UploadResult {
   url: string
 }
 
-/** 上传类型 → 云湖数据床路由前缀 */
-const CDN_PREFIX_MAP: Record<string, string> = {
-  image: 'https://chat-img.jwznb.com',
-  file: 'https://chat-file.jwznb.com',
-  video: 'https://chat-video1.jwznb.com',
-}
-
 /** 上传文件到七牛 */
 async function uploadToQiniu(
   file: File,
   type: 'image' | 'file' | 'video',
   onProgress?: (pct: number) => void,
+  signal?: AbortSignal,
 ): Promise<UploadResult> {
   const tokenInfo = await getUploadToken(type)
   const host = await getUploadHost(tokenInfo.bucket, tokenInfo.accessKey)
   const hash = await fileMD5(file)
   const key = hash
-  const cdnPrefix = CDN_PREFIX_MAP[type]
+  const cdnPrefix = CDN_PREFIXES[type]
 
   // HEAD 检查云湖 CDN 上是否已有该文件
   const exists = await fileExists(cdnPrefix.replace(/^https?:\/\//, ''), key)
@@ -184,6 +177,17 @@ async function uploadToQiniu(
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest()
     xhr.open('POST', `https://${host}`)
+
+    if (signal) {
+      if (signal.aborted) {
+        reject(new DOMException('Aborted', 'AbortError'))
+        return
+      }
+      signal.addEventListener('abort', () => {
+        xhr.abort()
+        reject(new DOMException('Aborted', 'AbortError'))
+      })
+    }
 
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable && onProgress) {
