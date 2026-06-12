@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
+import { useEffect, useRef, useState, useCallback, useMemo, forwardRef } from 'react'
 import { Virtuoso } from 'react-virtuoso'
 import { getMessages, recallMessage, batchRecallMessages } from '../../api/message'
 import { useChatStore } from '../../store/chatStore'
@@ -24,6 +24,7 @@ export default function MessageList({ adminIds, ownerId, onQuote }: MessageListP
   const selfUserId = useAuthStore((s) => s.userId) || ''
   const [historyMessages, setHistoryMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(false)
+  const loadingRef = useRef(false)
   const [hasMore, setHasMore] = useState(true)
   const virtuosoRef = useRef<any>(null)
   const prevChatId = useRef<string | null>(null)
@@ -50,12 +51,12 @@ export default function MessageList({ adminIds, ownerId, onQuote }: MessageListP
   }, [historyMessages, currentMessages])
 
   // Core message loading function
-  const loadMessages = useCallback(async (signal?: AbortSignal) => {
-    if (!currentChatId || currentChatType == null || loading) return
+  const loadMessages = useCallback(async (firstMsgId?: string, signal?: AbortSignal) => {
+    if (!currentChatId || currentChatType == null || loadingRef.current) return
+    loadingRef.current = true
     setLoading(true)
     try {
-      const firstMsg = historyMessages[0]
-      const resp = await getMessages(currentChatId, currentChatType, 30, firstMsg?.msgId, signal)
+      const resp = await getMessages(currentChatId, currentChatType, 30, firstMsgId, signal)
       const rawMsgs = resp.msg || []
       
       if (rawMsgs.length < 30) {
@@ -64,7 +65,7 @@ export default function MessageList({ adminIds, ownerId, onQuote }: MessageListP
       
       const msgs: Message[] = [...rawMsgs].reverse().map((m: any) => parseMessage(m, selfUserId))
       
-      if (firstMsg) {
+      if (firstMsgId) {
         setFirstItemIndex((prev) => prev - msgs.length)
         setHistoryMessages((prev) => [...msgs, ...prev])
       } else {
@@ -83,14 +84,15 @@ export default function MessageList({ adminIds, ownerId, onQuote }: MessageListP
         console.error('加载消息失败:', err)
       }
     } finally {
+      loadingRef.current = false
       setLoading(false)
     }
-  }, [currentChatId, currentChatType, historyMessages, loading, selfUserId])
+  }, [currentChatId, currentChatType, selfUserId])
 
   // Debounced load more to prevent network request thrashing on fast scrolls
-  const debouncedLoadMessages = useDebouncedCallback((signal?: AbortSignal) => {
-    if (!loading && hasMore) {
-      loadMessages(signal)
+  const debouncedLoadMessages = useDebouncedCallback((firstMsgId?: string, signal?: AbortSignal) => {
+    if (!loadingRef.current && hasMore) {
+      loadMessages(firstMsgId, signal)
     }
   }, 200)
 
@@ -111,14 +113,13 @@ export default function MessageList({ adminIds, ownerId, onQuote }: MessageListP
     if (!currentChatId) return
     const abortController = new AbortController()
 
-    if (historyMessages.length === 0) {
-      loadMessages(abortController.signal)
-    }
+    loadMessages(undefined, abortController.signal)
 
     return () => {
       abortController.abort()
+      loadingRef.current = false // Reset lock on abort to prevent Strict Mode double-mount blocking
     }
-  }, [currentChatId, historyMessages.length, loadMessages])
+  }, [currentChatId, loadMessages])
 
   // Scroll to bottom on new incoming messages
   useEffect(() => {
@@ -263,10 +264,10 @@ export default function MessageList({ adminIds, ownerId, onQuote }: MessageListP
   }, [selectMode, toggleSelect])
 
   const handleStartReached = useCallback(() => {
-    if (!loading && hasMore) {
-      debouncedLoadMessages()
+    if (!loadingRef.current && hasMore && historyMessages.length > 0) {
+      debouncedLoadMessages(historyMessages[0].msgId)
     }
-  }, [loading, hasMore, debouncedLoadMessages])
+  }, [hasMore, historyMessages, debouncedLoadMessages])
 
   const handleStickerPreview = useCallback((packId: number) => {
     setStickerPackId(packId)
@@ -363,6 +364,16 @@ export default function MessageList({ adminIds, ownerId, onQuote }: MessageListP
               </>
             ),
             Footer: () => <div className="h-28 shrink-0" />,
+            List: forwardRef<HTMLDivElement, any>(({ style, children, ...props }, ref) => (
+              <div
+                ref={ref}
+                style={style}
+                className="px-6 pt-6"
+                {...props}
+              >
+                {children}
+              </div>
+            )),
           }}
         />
       </div>
