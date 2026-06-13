@@ -1,12 +1,377 @@
 @import "tailwindcss";
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+:root {
+  --adw-window: #242424;
+  --adw-view: #2d2d2d;
+  --adw-card: #383838;
+  --adw-popover: #383838;
+  --adw-dialog: #3d3d3d;
+
+  --adw-border: #1e1e1e;
+  --adw-shade: rgba(0, 0, 0, 0.2);
+  --adw-shadow: rgba(0, 0, 0, 0.1);
+
+  --adw-blue: #3584e4;
+  --adw-green: #2ec27e;
+  --adw-yellow: #f5c211;
+  --adw-orange: #f99b1d;
+  --adw-red: #e01b24;
+  --adw-purple: #9141ac;
+  --adw-brown: #cdab8f;
+  --adw-pink: #ff669b;
+  --adw-gray: #8b8e8f;
+
+  --adw-fg: #ffffff;
+  --adw-fg-dim: #a8a8a8;
+  --adw-fg-secondary: #a8a8a8;
+  --adw-accent: #3584e4;
+  --adw-accent-dim: #2a68b2;
+  --adw-destructive: #e01b24;
+
+  --adw-header: #2d2d2d;
+  --adw-sidebar: #1e1e1e;
+  --adw-selected: #ffffff1a;
+  --adw-hover: #ffffff12;
+  --adw-active: #ffffff26;
+  --adw-drop-target: #3584e466;
+
+  --adw-border-radius: 16px;
+  --adw-border-radius-sm: 12px;
+  --adw-border-radius-lg: 20px;
+
+  --font-cantarell: Cantarell,
+    Inter,
+    system-ui,
+    sans-serif;
+
+  /* Safe HTML Renderer Variables */
+  --safe-html-h6-color: #6b7280;
+  --safe-html-code-bg: #e2e8f0;
+  --safe-html-code-color: #1e293b;
+  --safe-html-pre-bg: #1e293b;
+  --safe-html-pre-color: #f1f5f9;
+  --safe-html-blockquote-border: #cbd5e1;
+  --safe-html-blockquote-color: #475569;
+  --safe-html-link-color: #93c5fd;
+}
+
+/* Light mode body styles */
+:root:not(.dark) {
+  --adw-fg: #2e3436;
+  --adw-window: #f6f5f4;
+  --adw-view: #ffffff;
+  --adw-card: #ffffff;
+  --adw-popover: #ffffff;
+  --adw-dialog: #ffffff;
+  --adw-border: #d5d3cf;
+  --adw-header: #ffffff;
+  --adw-sidebar: #fafafa;
+  --adw-fg-dim: #5c5d5f;
+  --adw-fg-secondary: #5c5d5f;
+  --adw-selected: #3584e426;
+  --adw-hover: #3584e412;
+  --adw-active: #3584e433;
+}
+
+.dark {
+  /* 重新定义深色模式下的基础变量 */
+  --adw-fg: #ffffff;
+  --adw-fg-dim: #a8a8a8;
+  --adw-fg-secondary: #a8a8a8;
+  --adw-window: #242424;
+  --adw-view: #2d2d2d;
+  --adw-card: #383838;
+  --adw-popover: #383838;
+  --adw-dialog: #3d3d3d;
+  --adw-header: #2d2d2d;
+  --adw-sidebar: #1e1e1e;
+  --adw-selected: #ffffff1a;
+  --adw-hover: #ffffff12;
+  --adw-active: #ffffff26;
+  --adw-border: #1e1e1e;
+  --adw-accent: #3584e4;
+  --adw-accent-dim: #2a68b2;
+  --adw-blue: #3584e4;
+  --adw-green: #2ec27e;
+  --adw-yellow: #f5c211;
+  --adw-orange: #f99b1d;
+  --adw-red: #e01b24;
+  --adw-purple: #9141ac;
+  --adw-brown: #cdab8f;
+  --adw-pink: #ff669b;
+  --adw-gray: #8b8e8f;
+  --adw-shade: rgba(0, 0, 0, 0.2);
+  --adw-shadow: rgba(0, 0, 0, 0.1);
+  
+  /* Safe HTML Renderer Dark Mode Variables */
+  --safe-html-h6-color: #9ca3af;
+  --safe-html-code-bg: #374151;
+  --safe-html-code-color: #f3f4f6;
+  --safe-html-pre-bg: #1f2937;
+  --safe-html-pre-color: #f9fafb;
+  --safe-html-blockquote-border: #4b5563;
+  --safe-html-blockquote-color: #9ca3af;
+  --safe-html-link-color: #60a5fa;
+}
+
+@layer base {
+  body {
+    @apply antialiased overflow-hidden;
+    font-family: Cantarell, Inter, system-ui, sans-serif;
+    color: var(--adw-fg);
+    background-color: var(--adw-window);
+  }
 }
 
 html, body, #root {
   height: 100%;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Custom Scrollbar for Adwaita look */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Selection highlight */
+::selection {
+  background: rgba(53, 132, 228, 0.3);
+}
+
+/* Menu animation */
+.animate-in {
+  animation: animateIn 0.2s ease-out;
+}
+
+@keyframes animateIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Styles for HTML message content */
+.safe-html-content {
+  all: initial;
+  contain: layout style paint;
+  font-family: inherit;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: inherit;
+  text-align: left;
+  white-space: normal;
+  display: block;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.safe-html-content h1 {
+  @apply text-xl font-bold mb-2 mt-4 block;
+  color: var(--adw-fg);
+  margin: 0.67em 0;
+  font-size: 1.5em;
+}
+
+.safe-html-content h2 {
+  @apply text-lg font-bold mb-2 mt-3 block;
+  color: var(--adw-fg);
+  margin: 0.83em 0;
+  font-size: 1.25em;
+}
+
+.safe-html-content h3 {
+  @apply font-bold mb-2 mt-2 block;
+  color: var(--adw-fg);
+  margin: 1em 0;
+  font-size: 1.17em;
+}
+
+.safe-html-content h4 {
+  @apply font-semibold mb-1 mt-1 block;
+  color: var(--adw-fg);
+  margin: 1.33em 0;
+  font-size: 1em;
+}
+
+.safe-html-content h5 {
+  @apply font-medium mb-1 block;
+  color: var(--adw-fg);
+  margin: 1.67em 0;
+  font-size: 0.83em;
+}
+
+.safe-html-content h6 {
+  @apply text-sm font-medium mb-1 block;
+  color: var(--adw-fg-dim);
+  margin: 2.33em 0;
+  font-size: 0.67em;
+}
+
+.safe-html-content ul {
+  @apply list-disc pl-5 my-2 block;
+  margin: 1em 0;
+  padding-left: 40px;
+}
+
+.safe-html-content ol {
+  @apply list-decimal pl-5 my-2 block;
+  margin: 1em 0;
+  padding-left: 40px;
+}
+
+.safe-html-content li {
+  @apply my-1 list-item;
+  display: list-item;
+}
+
+.safe-html-content strong {
+  @apply font-bold;
+  font-weight: bold;
+}
+
+.safe-html-content em {
+  @apply italic;
+  font-style: italic;
+}
+
+.safe-html-content code {
+  @apply bg-slate-700 text-slate-100 px-1 py-0.5 rounded text-sm font-mono inline;
+  font-family: monospace;
+}
+
+.safe-html-content pre {
+  @apply bg-slate-800 text-slate-100 p-3 rounded overflow-x-auto my-2 block;
+  font-family: monospace;
+  white-space: pre;
+  margin: 1em 0;
+}
+
+.safe-html-content blockquote {
+  @apply border-l-4 border-slate-500 pl-3 my-2 text-slate-400 italic block;
+  margin: 1em 0;
+  padding: 0.5em 0 0.5em 1em;
+}
+
+.safe-html-content a {
+  color: var(--adw-blue);
+  text-decoration: underline;
+  color: #3584e4;
+  text-decoration: underline;
+}
+
+/* Ensure container doesn't affect layout */
+.safe-html-content::before,
+.safe-html-content::after {
+  display: table;
+  content: "";
+  clear: both;
+}
+
+/* Adwaita-style buttons */
+.btn-adw {
+  @apply px-4 py-2 rounded-xl font-normal text-sm transition-all duration-200 ease-in-out;
+  background: var(--adw-view);
+  color: var(--adw-fg);
+  border: 1px solid var(--adw-border);
+}
+
+.btn-adw:hover {
+  background: var(--adw-hover);
+  border-color: var(--adw-accent);
+}
+
+.btn-adw:active {
+  background: var(--adw-active);
+}
+
+.btn-adw:focus {
+  outline: 2px solid var(--adw-accent);
+  outline-offset: -2px;
+}
+
+.btn-adw:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Adwaita-style inputs */
+.input-adw {
+  @apply px-3 py-2 rounded-full text-sm transition-all duration-200 ease-in-out;
+  background: var(--adw-view);
+  color: var(--adw-fg);
+  border: 1px solid var(--adw-border);
+}
+
+.input-adw:focus {
+  border-color: var(--adw-accent);
+  outline: 2px solid var(--adw-accent);
+  outline-offset: -2px;
+}
+
+/* Adwaita-style cards */
+.card-adw {
+  @apply rounded-2xl p-6 transition-all duration-200 ease-in-out;
+  background: var(--adw-card);
+  border: 1px solid var(--adw-border);
+}
+
+/* Adwaita-style list items */
+.list-item-adw {
+  @apply px-4 py-3 rounded-xl transition-all duration-200 ease-in-out flex items-center gap-3;
+  background: transparent;
+  border: 1px solid transparent;
+}
+
+.list-item-adw:hover {
+  background: var(--adw-hover);
+}
+
+.list-item-adw.selected {
+  background: var(--adw-selected);
+}
+
+/* Adwaita-style header bars */
+.header-bar {
+  @apply h-[46px] min-h-[46px] px-4 flex items-center justify-between rounded-none;
+  background: var(--adw-header);
+  border-bottom: 1px solid var(--adw-border);
+}
+
+/* Adwaita-style sidebar */
+.sidebar-adw {
+  background: var(--adw-sidebar);
+  border-right: 1px solid var(--adw-border);
+}
+
+/* Transition classes */
+.transition-adw {
+  @apply transition-all duration-200 ease-in-out;
 }

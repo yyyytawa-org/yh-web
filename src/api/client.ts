@@ -1,8 +1,9 @@
 import axios from 'axios'
 import { getToken } from '../utils/token'
+import { API_BASE } from '../config'
 
 export const apiClient = axios.create({
-  baseURL: 'https://chat-go.jwzhd.com',
+  baseURL: API_BASE,
   timeout: 30000,
 })
 

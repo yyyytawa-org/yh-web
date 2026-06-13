@@ -3,6 +3,20 @@ import { sendMessage } from '../../api/message'
 import { useChatStore } from '../../store/chatStore'
 import { uploadToQiniu, compressImage } from '../../api/upload'
 import type { QuoteMsg } from '../../types/message'
+import { 
+  Plus, 
+  Send, 
+  File, 
+  Image as ImageIcon, 
+  Video as VideoIcon, 
+  Sliders, 
+  X, 
+  Check,
+  Smile,
+  Code
+} from 'lucide-react'
+import EmojiPicker from 'emoji-picker-react'
+import AdwButton from './AdwButton'
 
 interface UploadItem {
   id: string
@@ -24,7 +38,6 @@ export default function InputArea({ quoteMsg, onClearQuote }: InputAreaProps) {
   const { currentChatId, currentChatType } = useChatStore()
   const [text, setText] = useState('')
   const [sending, setSending] = useState(false)
-  const [height, setHeight] = useState(80)
   const [uploads, setUploads] = useState<UploadItem[]>([])
   const [dragOver, setDragOver] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -37,17 +50,72 @@ export default function InputArea({ quoteMsg, onClearQuote }: InputAreaProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const imageInputRef = useRef<HTMLInputElement>(null)
   const videoInputRef = useRef<HTMLInputElement>(null)
-  const isResizing = useRef(false)
-  const startY = useRef(0)
-  const startHeight = useRef(0)
   const dragCounter = useRef(0)
 
-  const toggleCompress = () => { const next = !compress; setCompress(next); localStorage.setItem('yh_compress', next ? '1' : '0') }
-  const updateCompressQuality = (val: number) => { const clamped = Math.max(0.01, Math.min(1, val)); setCompressQuality(clamped); localStorage.setItem('yh_compress_quality', String(clamped)) }
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const [messageMode, setMessageMode] = useState<'text' | 'markdown' | 'html'>('text')
+  const emojiPickerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    const handler = (e: Event) => { const detail = (e as CustomEvent).detail; setText((prev) => prev + `@${detail.name} `); textareaRef.current?.focus() }
-    window.addEventListener('at-user', handler); return () => window.removeEventListener('at-user', handler)
+    const handleClickOutside = (event: MouseEvent) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target as Node)) {
+        setShowEmojiPicker(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const getMessageModeColor = () => {
+    switch (messageMode) {
+      case 'markdown':
+        return 'text-red-500'
+      case 'html':
+        return 'text-purple-500'
+      default:
+        return 'text-[var(--adw-blue)]'
+    }
+  }
+
+  const cycleMessageMode = () => {
+    setMessageMode((prev) => {
+      if (prev === 'text') return 'markdown'
+      if (prev === 'markdown') return 'html'
+      return 'text'
+    })
+  }
+
+  const getPlaceholderText = () => {
+    switch (messageMode) {
+      case 'markdown':
+        return `Markdown 模式 - 输入消息...`
+      case 'html':
+        return `HTML 模式 - 输入消息...`
+      default:
+        return `输入消息...`
+    }
+  }
+
+  const toggleCompress = () => { 
+    const next = !compress
+    setCompress(next)
+    localStorage.setItem('yh_compress', next ? '1' : '0') 
+  }
+  
+  const updateCompressQuality = (val: number) => { 
+    const clamped = Math.max(0.01, Math.min(1, val))
+    setCompressQuality(clamped)
+    localStorage.setItem('yh_compress_quality', String(clamped)) 
+  }
+
+  useEffect(() => {
+    const handler = (e: Event) => { 
+      const detail = (e as CustomEvent).detail
+      setText((prev) => prev + `@${detail.name} `)
+      textareaRef.current?.focus() 
+    }
+    window.addEventListener('at-user', handler)
+    return () => window.removeEventListener('at-user', handler)
   }, [])
 
   const handleFiles = async (files: FileList | File[]) => {
@@ -63,7 +131,9 @@ export default function InputArea({ quoteMsg, onClearQuote }: InputAreaProps) {
         const isVideo = file.type.startsWith('video/')
         const type = isImage ? 'image' : isVideo ? 'video' : 'file'
         if (isImage && compress) file = await compressImage(file, compressQuality)
-        const result = await uploadToQiniu(file, type, (pct) => { setUploads((prev) => prev.map((u) => (u.id === item.id ? { ...u, progress: pct } : u))) })
+        const result = await uploadToQiniu(file, type, (pct) => { 
+          setUploads((prev) => prev.map((u) => (u.id === item.id ? { ...u, progress: pct } : u))) 
+        })
         const store = useChatStore.getState()
         if (store.currentChatId && store.currentChatType != null) {
           if (type === 'image') {
@@ -106,7 +176,12 @@ export default function InputArea({ quoteMsg, onClearQuote }: InputAreaProps) {
     } catch (err) { console.error('发送失败:', err) } finally { setSending(false) }
   }, [text, currentChatId, currentChatType, quoteMsg, onClearQuote])
 
-  const handleKeyDown = (e: React.KeyboardEvent) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }
+  const handleKeyDown = (e: React.KeyboardEvent) => { 
+    if (e.key === 'Enter' && !e.shiftKey) { 
+      e.preventDefault()
+      handleSend() 
+    } 
+  }
 
   const handleDragEnter = (e: React.DragEvent) => { e.preventDefault(); dragCounter.current++; if (dragCounter.current === 1) setDragOver(true) }
   const handleDragOver = (e: React.DragEvent) => { e.preventDefault() }
@@ -114,79 +189,230 @@ export default function InputArea({ quoteMsg, onClearQuote }: InputAreaProps) {
   const handleDrop = (e: React.DragEvent) => { e.preventDefault(); dragCounter.current = 0; setDragOver(false); if (e.dataTransfer.files.length > 0) handleFiles(e.dataTransfer.files) }
   const handlePaste = (e: React.ClipboardEvent) => { if (e.clipboardData?.files.length) { e.preventDefault(); handleFiles(e.clipboardData.files) } }
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    isResizing.current = true; startY.current = e.clientY; startHeight.current = height
-    document.body.style.cursor = 'ns-resize'; document.body.style.userSelect = 'none'
-    const onMouseMove = (ev: MouseEvent) => { if (!isResizing.current) return; const diff = startY.current - ev.clientY; setHeight(Math.max(60, Math.min(300, startHeight.current + diff))) }
-    const onMouseUp = () => { isResizing.current = false; document.body.style.cursor = ''; document.body.style.userSelect = ''; document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onMouseUp) }
-    document.addEventListener('mousemove', onMouseMove); document.addEventListener('mouseup', onMouseUp)
-  }
-
   const handleFocus = () => {
-    if ('visualViewport' in window) window.visualViewport!.addEventListener('resize', () => { textareaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }) }, { once: true })
+    if ('visualViewport' in window) {
+      window.visualViewport!.addEventListener('resize', () => { 
+        textareaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }) 
+      }, { once: true })
+    }
   }
 
   const pendingUploads = uploads.filter((u) => u.status !== 'done')
 
-  if (!currentChatId) return <div className="h-20 border-t border-gray-200 bg-[#f5f5f5] flex items-center justify-center text-gray-400 text-sm shrink-0">请先选择一个会话</div>
+  if (!currentChatId) {
+    return (
+      <div className="h-14 border-t border-[var(--adw-border)]/[0.2] bg-[var(--adw-window)] flex items-center justify-center text-[var(--adw-fg-dim)] text-xs shrink-0 select-none opacity-60 font-semibold">
+        请先选择一个会话以开始聊天
+      </div>
+    )
+  }
 
   return (
-    <div className="border-t border-gray-200 bg-white shrink-0" style={{ height: `${height + 16 + (pendingUploads.length > 0 ? 44 : 0)}px` }}>
-      <div onMouseDown={handleMouseDown} className="hidden md:flex h-1.5 cursor-ns-resize hover:bg-gray-200 transition-colors items-center justify-center"><div className="w-8 h-0.5 bg-gray-300 rounded" /></div>
-      {pendingUploads.length > 0 && (
-        <div className="px-3 py-1.5 space-y-1">
-          {pendingUploads.map((u) => (
-            <div key={u.id} className="flex items-center gap-2 text-xs">
-              <span className={`truncate flex-1 ${u.status === 'error' ? 'text-red-500' : 'text-gray-500'}`}>{u.status === 'error' ? u.error : u.file.name}</span>
-              {u.status === 'uploading' && <><div className="w-20 h-1.5 bg-gray-200 rounded-full overflow-hidden"><div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${u.progress}%` }} /></div><span className="text-gray-400 w-8 text-right">{u.progress}%</span></>}
-            </div>
-          ))}
-        </div>
-      )}
+    <footer className="px-0 py-3 absolute bottom-0 left-0 right-0 bg-transparent bg-gradient-to-t from-[var(--adw-window)]/90 to-[var(--adw-window)] backdrop-blur-md z-20 pointer-events-none">
+      <div className="max-w-4xl mx-auto px-4 pointer-events-auto">
+        {/* Uploading Progress */}
+        {pendingUploads.length > 0 && (
+          <div className="px-4 py-1.5 space-y-1 bg-[var(--adw-card)]/50 border border-[var(--adw-border)]/[0.2] rounded-xl mb-2">
+            {pendingUploads.map((u) => (
+              <div key={u.id} className="flex items-center gap-2 text-[10px]">
+                <span className={`truncate flex-1 font-bold ${u.status === 'error' ? 'text-red-500' : 'text-[var(--adw-fg-dim)]'}`}>
+                  {u.status === 'error' ? u.error : u.file.name}
+                </span>
+                {u.status === 'uploading' && (
+                  <>
+                    <div className="w-20 h-1 bg-[var(--adw-border)]/[0.3] rounded-full overflow-hidden shrink-0">
+                      <div className="h-full bg-[var(--adw-blue)] rounded-full transition-all" style={{ width: `${u.progress}%` }} />
+                    </div>
+                    <span className="text-[var(--adw-fg-dim)] w-8 text-right font-bold">{u.progress}%</span>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
 
-      {/* 引用消息提示 */}
-      {quoteMsg && (
-        <div className="px-3 py-1.5 bg-gray-50 flex items-center gap-2 text-xs border-b border-gray-100">
-          <span className="text-gray-400 shrink-0">回复</span>
-          {quoteMsg.quoteImageUrl ? (
-            <img src={quoteMsg.quoteImageUrl} alt="" className="h-8 w-12 object-cover rounded" />
-          ) : quoteMsg.quoteVideoUrl ? (
-            <video src={quoteMsg.quoteVideoUrl} className="h-8 w-12 object-cover rounded" muted />
-          ) : (
-            <span className="text-gray-600 truncate flex-1">{quoteMsg.text}</span>
+        {/* Quoted Message display */}
+        {quoteMsg && (
+          <div className="mb-2 p-2 bg-[var(--adw-blue)]/5 border border-[var(--adw-blue)]/10 rounded-lg relative flex items-center justify-between animate-in select-none">
+            <div className="flex-1 min-w-0 pr-3">
+              <span className="text-[10px] font-bold text-[var(--adw-blue)] uppercase block mb-0.5">回复</span>
+              <p className="text-xs truncate opacity-70 text-[var(--adw-fg)]">
+                {quoteMsg.text}
+              </p>
+            </div>
+            <button 
+              onClick={onClearQuote} 
+              className="p-1 rounded-lg hover:bg-[var(--adw-hover)] text-[var(--adw-fg-dim)] hover:text-[var(--adw-fg)] transition-colors cursor-pointer shrink-0"
+            >
+              <X size={12} />
+            </button>
+          </div>
+        )}
+
+        {/* Main Textarea and Controls row */}
+        <div 
+          className="flex items-center gap-2 -mx-4 px-4 relative" 
+          onDragEnter={handleDragEnter} 
+          onDragOver={handleDragOver} 
+          onDragLeave={handleDragLeave} 
+          onDrop={handleDrop}
+        >
+          {dragOver && (
+            <div className="absolute inset-0 bg-[var(--adw-blue)]/10 backdrop-blur-xs z-10 rounded-xl flex items-center justify-center border-2 border-dashed border-[var(--adw-blue)]">
+              <span className="text-[var(--adw-blue)] font-bold text-sm">释放文件以上传到当前会话</span>
+            </div>
           )}
-          <button onClick={onClearQuote} className="text-gray-400 hover:text-gray-600 shrink-0">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></svg>
+
+          {/* Left Buttons Group */}
+          <div className="flex items-center gap-1 shrink-0">
+            {/* Attachment menu trigger */}
+            <div className="relative">
+              <AdwButton 
+                iconOnly
+                ghost
+                roundedFull
+                className="p-2.5"
+                onClick={() => setMenuOpen(!menuOpen)} 
+                title="添加附件"
+              >
+                <Plus size={18} className="text-[var(--adw-fg-dim)]" />
+              </AdwButton>
+              
+              {menuOpen && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
+                  <div className="absolute bottom-full left-0 mb-2 bg-[var(--adw-card)] rounded-xl shadow-lg border border-[var(--adw-border)]/[0.2] z-50 p-1 w-44 animate-in">
+                    <button 
+                      onClick={() => { fileInputRef.current?.click(); setMenuOpen(false) }} 
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-[var(--adw-fg)] hover:bg-[var(--adw-hover)] rounded-lg transition-colors cursor-pointer text-left"
+                    >
+                      <File size={15} className="opacity-70 text-[var(--adw-blue)]" />
+                      <span>发送文件</span>
+                    </button>
+                    <button 
+                      onClick={() => { imageInputRef.current?.click(); setMenuOpen(false) }} 
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-[var(--adw-fg)] hover:bg-[var(--adw-hover)] rounded-lg transition-colors cursor-pointer text-left"
+                    >
+                      <ImageIcon size={15} className="opacity-70 text-emerald-500" />
+                      <span>发送图片</span>
+                    </button>
+                    <button 
+                      onClick={() => { videoInputRef.current?.click(); setMenuOpen(false) }} 
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-[var(--adw-fg)] hover:bg-[var(--adw-hover)] rounded-lg transition-colors cursor-pointer text-left"
+                    >
+                      <VideoIcon size={15} className="opacity-70 text-indigo-500" />
+                      <span>发送视频</span>
+                    </button>
+                    <div className="border-t border-[var(--adw-border)]/[0.1] my-1" />
+                    <button 
+                      onClick={() => { toggleCompress(); setMenuOpen(false) }} 
+                      className={`w-full flex items-center justify-between px-3 py-2 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
+                        compress ? 'text-[var(--adw-blue)] hover:bg-[var(--adw-blue)]/10' : 'text-[var(--adw-fg)] hover:bg-[var(--adw-hover)]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Sliders size={15} className="opacity-70" />
+                        <span>图片压缩</span>
+                      </div>
+                      {compress && <Check size={14} />}
+                    </button>
+                    
+                    {compress && (
+                      <div className="px-3 py-2 flex items-center gap-1.5 bg-[var(--adw-window)]/[0.4] rounded-lg mt-1 mx-1">
+                        <input 
+                          type="range" 
+                          min="1" 
+                          max="100" 
+                          step="1" 
+                          value={Math.round(compressQuality * 100)} 
+                          onChange={(e) => updateCompressQuality(Number(e.target.value) / 100)} 
+                          className="flex-1 h-1 appearance-none bg-[var(--adw-border)]/[0.3] rounded-full [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2.5 [&::-webkit-slider-thumb]:h-2.5 [&::-webkit-slider-thumb]:bg-[var(--adw-blue)] [&::-webkit-slider-thumb]:rounded-full cursor-pointer" 
+                        />
+                        <span className="text-[9px] font-bold text-[var(--adw-fg-dim)] w-8 text-right shrink-0">
+                          {Math.round(compressQuality * 100)}%
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+              
+              <input ref={fileInputRef} type="file" multiple className="hidden" onChange={(e) => { if (e.target.files) handleFiles(e.target.files); e.target.value = '' }} />
+              <input ref={imageInputRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => { if (e.target.files) handleFiles(e.target.files); e.target.value = '' }} />
+              <input ref={videoInputRef} type="file" accept="video/*" multiple className="hidden" onChange={(e) => { if (e.target.files) handleFiles(e.target.files); e.target.value = '' }} />
+            </div>
+
+            {/* Smile (Emoji) button */}
+            <AdwButton
+              iconOnly
+              ghost
+              roundedFull
+              className="p-2.5 text-[var(--adw-fg-dim)]"
+              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+              active={showEmojiPicker}
+              title="选择表情"
+            >
+              <Smile size={18} />
+            </AdwButton>
+
+            {/* Code (Mode) button */}
+            <AdwButton
+              iconOnly
+              ghost
+              roundedFull
+              onClick={cycleMessageMode}
+              className={`p-2.5 ${getMessageModeColor()}`}
+              title="切换输入模式"
+            >
+              <Code size={18} className="text-[var(--adw-fg-dim)]" />
+            </AdwButton>
+          </div>
+
+          {/* Text input box matching native GNOME text view */}
+          <div className="flex-1 flex flex-col gap-1 bg-[var(--adw-view)]/80 border border-[var(--adw-border)]/[0.2] rounded-lg px-3 py-1 focus-within:ring-1 focus-within:ring-[var(--adw-accent)]/[0.3] transition-all">
+            <textarea 
+              ref={textareaRef} 
+              value={text} 
+              onChange={(e) => setText(e.target.value)} 
+              onKeyDown={handleKeyDown} 
+              onPaste={handlePaste} 
+              onFocus={handleFocus} 
+              placeholder={getPlaceholderText()} 
+              className="flex-1 bg-transparent border-none outline-none resize-none py-1 px-0.5 text-[13px] leading-relaxed min-h-[24px] max-h-32 text-[var(--adw-fg)] placeholder-[var(--adw-fg-dim)]/50" 
+              disabled={sending} 
+              rows={1}
+            />
+          </div>
+
+          {/* Send button */}
+          <button 
+            onClick={handleSend} 
+            disabled={sending || !text.trim()} 
+            className={`w-10 h-10 rounded-full flex items-center justify-center text-white transition-all active:scale-95 shrink-0 cursor-pointer shadow-xs ${
+              text.trim() && !sending 
+                ? 'bg-[var(--adw-blue)] hover:bg-[var(--adw-blue)]/90' 
+                : 'bg-zinc-400 dark:bg-zinc-700 opacity-40 cursor-not-allowed'
+            }`}
+          >
+            <Send size={16} />
           </button>
         </div>
-      )}
-
-      <div className="flex gap-2 px-3 pb-3 pt-2 md:pt-0 relative" style={{ height: `${height}px` }}
-        onDragEnter={handleDragEnter} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
-        {dragOver && <div className="absolute inset-0 bg-blue-50/80 z-10 rounded-xl flex items-center justify-center border-2 border-dashed border-blue-400"><span className="text-blue-500 font-medium text-sm">释放以上传文件</span></div>}
-        <div className="flex flex-col items-center justify-end pb-1 shrink-0 relative">
-          <button onClick={() => setMenuOpen(!menuOpen)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-500 transition-colors" title="更多"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg></button>
-          {menuOpen && (<><div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} /><div className="absolute bottom-full left-0 mb-1 bg-white rounded-xl shadow-lg border border-gray-200 z-20 py-1 w-40">
-            <button onClick={() => { fileInputRef.current?.click(); setMenuOpen(false) }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>发送文件</button>
-            <button onClick={() => { imageInputRef.current?.click(); setMenuOpen(false) }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>发送图片</button>
-            <button onClick={() => { videoInputRef.current?.click(); setMenuOpen(false) }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" /></svg>发送视频</button>
-            <div className="border-t border-gray-100 my-1" />
-            <button onClick={() => { toggleCompress(); setMenuOpen(false) }} className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors ${compress ? 'text-blue-600' : 'text-gray-700 hover:bg-gray-50'}`}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /><line x1="16" y1="5" x2="22" y2="5" /><line x1="18" y1="3" x2="18" y2="7" /></svg>图片压缩 {compress ? '✓' : ''}</button>
-            {compress && (
-              <div className="px-3 py-1 flex items-center gap-2">
-                <input type="range" min="1" max="100" step="1" value={Math.round(compressQuality * 100)} onChange={(e) => updateCompressQuality(Number(e.target.value) / 100)} className="flex-1 h-1.5 appearance-none bg-gray-200 rounded-full [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-blue-500 [&::-webkit-slider-thumb]:rounded-full cursor-pointer" />
-                <input type="number" min="1" max="100" value={Math.round(compressQuality * 100)} onChange={(e) => { const val = Number(e.target.value); if (!isNaN(val)) updateCompressQuality(val / 100) }} className="w-12 text-center text-xs border border-gray-200 rounded py-0.5 focus:outline-none focus:border-blue-300" />
-                <span className="text-[10px] text-gray-400 w-4">%</span>
-              </div>
-            )}
-          </div></>)}
-          <input ref={fileInputRef} type="file" multiple className="hidden" onChange={(e) => { if (e.target.files) handleFiles(e.target.files); e.target.value = '' }} />
-          <input ref={imageInputRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => { if (e.target.files) handleFiles(e.target.files); e.target.value = '' }} />
-          <input ref={videoInputRef} type="file" accept="video/*" multiple className="hidden" onChange={(e) => { if (e.target.files) handleFiles(e.target.files); e.target.value = '' }} />
-        </div>
-        <textarea ref={textareaRef} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={handleKeyDown} onPaste={handlePaste} onFocus={handleFocus} placeholder="输入消息... (Enter 发送，Shift+Enter 换行)" className="flex-1 px-3 py-2 border border-gray-200 rounded-xl resize-none focus:outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-300 text-sm leading-relaxed" disabled={sending} />
-        <button onClick={handleSend} disabled={sending || !text.trim()} className="px-4 bg-[#95ec69] text-gray-900 rounded-xl hover:bg-[#7ddb52] disabled:opacity-40 disabled:cursor-not-allowed text-sm font-medium self-end transition-colors shrink-0" style={{ height: '36px' }}>{sending ? '...' : '发送'}</button>
+        
+        {/* EmojiPicker Dropdown Popover */}
+        {showEmojiPicker && (
+          <div className="absolute bottom-20 left-6 z-50 pointer-events-auto" ref={emojiPickerRef}>
+            <div className="fixed inset-0" onClick={() => setShowEmojiPicker(false)} />
+            <div className="relative">
+              <EmojiPicker 
+                onEmojiClick={(emojiData) => {
+                  setText((prev) => prev + emojiData.emoji)
+                }} 
+                theme={document.documentElement.classList.contains('dark') ? 'dark' : 'light'} 
+              />
+            </div>
+          </div>
+        )}
       </div>
-    </div>
+    </footer>
   )
 }

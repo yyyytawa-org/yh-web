@@ -1,4 +1,5 @@
 import protobuf from 'protobufjs'
+import { API_BASE } from '../config'
 
 const protoStr = `
 syntax = "proto3";
@@ -88,21 +89,33 @@ const ButtonReportReq = root.lookupType('button_report_send')
 const RecallReq = root.lookupType('recall_msg_send')
 const RecallBatchReq = root.lookupType('recall_msg_batch_send')
 
-async function protoPost(path: string, body: Uint8Array | null) {
+export async function fetchWithRetry(fn: () => Promise<Response>, retries = 3, delay = 1000): Promise<Response> {
+  try {
+    return await fn()
+  } catch (err: any) {
+    if (err?.name === 'AbortError' || retries <= 0) throw err
+    await new Promise((resolve) => setTimeout(resolve, delay))
+    return fetchWithRetry(fn, retries - 1, delay * 2)
+  }
+}
+
+async function protoPost(path: string, body: Uint8Array | null, signal?: AbortSignal) {
   const token = localStorage.getItem('yh_token') || ''
-  const resp = await fetch(`https://chat-go.jwzhd.com${path}`, {
+  const performFetch = () => fetch(`${API_BASE}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-protobuf', 'token': token },
     body: body as BodyInit | null,
+    signal,
   })
+  const resp = await fetchWithRetry(performFetch, 3, 1000)
   return new Uint8Array(await resp.arrayBuffer())
 }
 
-export async function getMessages(chatId: string, chatType: number, msgCount: number = 30, msgId?: string) {
+export async function getMessages(chatId: string, chatType: number, msgCount: number = 30, msgId?: string, signal?: AbortSignal) {
   const msg: any = { msgCount, chatType, chatId }
   if (msgId) msg.msgId = msgId
   const encoded = ListMessageReq.encode(msg).finish()
-  const buf = await protoPost('/v1/msg/list-message', encoded)
+  const buf = await protoPost('/v1/msg/list-message', encoded, signal)
   return ListMessageResp.decode(buf)
 }
 
@@ -122,6 +135,7 @@ export interface SendMessageOptions {
   quoteImageName?: string
   quoteVideoUrl?: string
   quoteVideoTime?: number
+  signal?: AbortSignal
 }
 
 export async function sendMessage(opts: SendMessageOptions) {
@@ -140,7 +154,7 @@ export async function sendMessage(opts: SendMessageOptions) {
   if (opts.quoteMsgId) msg.quoteMsgId = opts.quoteMsgId
 
   const encoded = SendMessageReq.encode(msg).finish()
-  const buf = await protoPost('/v1/msg/send-message', encoded)
+  const buf = await protoPost('/v1/msg/send-message', encoded, opts.signal)
   return SendMessageResp.decode(buf)
 }
 

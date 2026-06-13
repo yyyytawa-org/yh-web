@@ -1,5 +1,6 @@
 import { apiClient } from './client'
 import protobuf from 'protobufjs'
+import { API_BASE } from '../config'
 
 const protoStr = `
 syntax = "proto3";
@@ -53,7 +54,7 @@ const root = protobuf.parse(protoStr).root
 const ConversationListResp = root.lookupType('list')
 const ConversationListReq = root.lookupType('address_book_list_send')
 
-export async function getConversationList(md5: string = '') {
+export async function getConversationList(md5: string = '', signal?: AbortSignal) {
   let body: Uint8Array | null = null
   if (md5) {
     body = ConversationListReq.encode({ md5 }).finish()
@@ -63,28 +64,31 @@ export async function getConversationList(md5: string = '') {
     headers: { 'Content-Type': 'application/x-protobuf' },
     responseType: 'arraybuffer',
     transformRequest: [(d: any) => d],
+    signal,
   })
   return ConversationListResp.decode(new Uint8Array(data))
 }
 
-export async function dismissNotification(chatId: string) {
+export async function dismissNotification(chatId: string, signal?: AbortSignal) {
   const token = localStorage.getItem('yh_token') || ''
-  await fetch('https://chat-go.jwzhd.com/v1/conversation/dismiss-notification', {
+  await fetch(`${API_BASE}/v1/conversation/dismiss-notification`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'token': token,
     },
     body: JSON.stringify({ chatId }),
+    signal,
   })
 }
 
 /** 获取置顶会话列表 */
-export async function getStickyList() {
+export async function getStickyList(signal?: AbortSignal) {
   const token = localStorage.getItem('yh_token') || ''
-  const resp = await fetch('https://chat-go.jwzhd.com/v1/sticky/list', {
+  const resp = await fetch(`${API_BASE}/v1/sticky/list`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'token': token },
+    signal,
   })
   return resp.json()
 }

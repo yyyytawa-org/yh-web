@@ -1,4 +1,5 @@
 import protobuf from 'protobufjs'
+import { API_BASE } from '../config'
 
 const protoStr = `
 syntax = "proto3";
@@ -93,20 +94,21 @@ const InfoReq = root.lookupType('info_send')
 const InfoResp = root.lookupType('info')
 const EditReq = root.lookupType('edit_group_send')
 
-async function protoPost(path: string, body: Uint8Array) {
+async function protoPost(path: string, body: Uint8Array, signal?: AbortSignal) {
   const token = localStorage.getItem('yh_token') || ''
-  const resp = await fetch(`https://chat-go.jwzhd.com${path}`, {
+  const resp = await fetch(`${API_BASE}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-protobuf', 'token': token },
     body: body as BodyInit | null,
+    signal,
   })
   const buf = await resp.arrayBuffer()
   return new Uint8Array(buf)
 }
 
-export async function getGroupInfo(groupId: string) {
+export async function getGroupInfo(groupId: string, signal?: AbortSignal) {
   const encoded = InfoReq.encode({ groupId }).finish()
-  const buf = await protoPost('/v1/group/info', encoded)
+  const buf = await protoPost('/v1/group/info', encoded, signal)
   return InfoResp.toObject(InfoResp.decode(buf), { defaults: true })
 }
 
@@ -114,7 +116,7 @@ export async function getGroupInfo(groupId: string) {
  * 编辑群信息
  * @param data 完整的群信息对象（从 getGroupInfo 获取后修改），合并所有字段不会丢失数据
  */
-export async function editGroup(data: any) {
+export async function editGroup(data: any, signal?: AbortSignal) {
   const encoded = EditReq.encode({
     groupId: data.groupId || data.group_id,
     name: data.name,
@@ -127,5 +129,5 @@ export async function editGroup(data: any) {
     private: data.private,
     hideGroupMembers: data.hideGroupMembers ?? data.hide_group_members,
   }).finish()
-  await protoPost('/v1/group/edit-group', encoded)
+  await protoPost('/v1/group/edit-group', encoded, signal)
 }

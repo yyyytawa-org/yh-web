@@ -1,5 +1,6 @@
 import { apiClient } from './client'
 import protobuf from 'protobufjs'
+import { API_BASE } from '../config'
 
 const protoStr = `
 syntax = "proto3";
@@ -84,19 +85,20 @@ const GetUserReq = root.lookupType('get_user_send')
 const GetUserResp = root.lookupType('get_user')
 
 /** 获取自身信息（Protobuf 接口） */
-export async function getSelfInfo() {
-  const { data } = await apiClient.get('/v1/user/info', { responseType: 'arraybuffer' })
+export async function getSelfInfo(signal?: AbortSignal) {
+  const { data } = await apiClient.get('/v1/user/info', { responseType: 'arraybuffer', signal })
   return SelfInfo.toObject(SelfInfo.decode(new Uint8Array(data)), { defaults: true })
 }
 
 /** 获取用户信息（Protobuf 接口） */
-export async function getUserInfo(userId: string) {
+export async function getUserInfo(userId: string, signal?: AbortSignal) {
   const token = localStorage.getItem('yh_token') || ''
   const encoded = GetUserReq.encode({ id: userId }).finish()
-  const resp = await fetch('https://chat-go.jwzhd.com/v1/user/get-user', {
+  const resp = await fetch(`${API_BASE}/v1/user/get-user`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-protobuf', 'token': token },
     body: encoded as BodyInit | null,
+    signal,
   })
   const buf = await resp.arrayBuffer()
   return GetUserResp.toObject(GetUserResp.decode(new Uint8Array(buf)), { defaults: true })
